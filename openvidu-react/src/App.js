@@ -58,12 +58,10 @@ class App extends Component {
 
   componentDidMount() {
     window.addEventListener("beforeunload", this.onbeforeunload);
-    window.addEventListener("keydown", this.handleKeyDown);  // 키 입력 리스너 추가
   }
 
   componentWillUnmount() {
     window.removeEventListener("beforeunload", this.onbeforeunload);
-    window.removeEventListener("keydown", this.handleKeyDown);  // 키 입력 리스너 제거
   }
 
   onbeforeunload(event) {
@@ -150,14 +148,14 @@ class App extends Component {
         // });
 
         // Receiver of all messages (usually before calling 'session.connect')
-        mySession.on('signal', (event) => {
-            console.log(event.data); // Message
-            console.log(event.from); // Connection object of the sender
-            console.log(event.type); // The type of message
+        mySession.on("signal", (event) => {
+          console.log(event.data); // Message
+          console.log(event.from); // Connection object of the sender
+          console.log(event.type); // The type of message
 
-            if (event.data === "A" || event.data === "S") {
-                this.playAudio();
-              }
+          if (event.data === "A" || event.data === "S") {
+            this.playAudio();
+          }
         });
 
         mySession.on("connectionCreated", (event) => {
@@ -173,6 +171,8 @@ class App extends Component {
           mySession
             .connect(token, { clientData: this.state.myUserName })
             .then(async () => {
+              window.addEventListener("keydown", this.handleKeyDown);  // 키 입력 리스너 추가
+
               // --- 5) Get your own camera stream ---
 
               // Init a publisher passing undefined as targetElement (we don't want OpenVidu to insert a video
@@ -180,7 +180,7 @@ class App extends Component {
               let publisher = await this.OV.initPublisherAsync(undefined, {
                 audioSource: undefined, // The source of audio. If undefined default microphone
                 videoSource: undefined, // The source of video. If undefined default webcam
-                publishAudio: true, // Whether you want to start publishing with your audio unmuted or not
+                publishAudio: false, // Whether you want to start publishing with your audio unmuted or not
                 publishVideo: true, // Whether you want to start publishing with your video enabled or not
                 resolution: "640x480", // The resolution of your video
                 frameRate: 30, // The frame rate of your video
@@ -251,6 +251,7 @@ class App extends Component {
 
     if (mySession) {
       mySession.disconnect();
+      window.removeEventListener("keydown", this.handleKeyDown); // 키 입력 리스너 제거
     }
 
     // Empty all properties...
@@ -282,7 +283,7 @@ class App extends Component {
           // In mobile devices the default and first camera is the front one
           var newPublisher = this.OV.initPublisher(undefined, {
             videoSource: newVideoDevice[0].deviceId,
-            publishAudio: true,
+            publishAudio: false,
             publishVideo: true,
             mirror: true,
           });
