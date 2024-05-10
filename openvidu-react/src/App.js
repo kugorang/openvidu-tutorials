@@ -1,17 +1,16 @@
+import React, { Component } from "react";
 import { OpenVidu } from "openvidu-browser";
 
 import axios from "axios";
-import React, { Component } from "react";
 import "./App.css";
 import UserVideoComponent from "./UserVideoComponent";
-import drum_snare_sound from "./drum/snare.mp3"; // 음악 파일 임포트
-import drum_1 from "./drum/drum_1.mp3"; // 음악 파일 임포트
 
 const APPLICATION_SERVER_URL =
   process.env.NODE_ENV === "production" ? "" : "https://motionbe.at:5000/";
 
-  // Webpack require.context를 사용하여 모든 mp3 파일 로드
-const soundFiles = require.context('./drum', false, /\.mp3$/);
+// Webpack require.context를 사용하여 모든 mp3 파일 로드
+// 사용 예: soundClips['snare'] 또는 soundClips['drum_1']
+const soundFiles = require.context("./drum", false, /\.mp3$/);
 
 class App extends Component {
   constructor(props) {
@@ -25,9 +24,7 @@ class App extends Component {
       mainStreamManager: undefined, // Main video of the page. Will be the 'publisher' or one of the 'subscribers'
       publisher: undefined,
       subscribers: [],
-      // audioClips: {}
-      audioPlayer1: new Audio(drum_snare_sound), // 오디오 플레이어 객체 생성
-      audioPlayer2: new Audio(drum_1), // 오디오 플레이어 객체 생성
+      audioClips: {}, // Audio 객체를 포함하는 state 초기화
     };
 
     this.joinSession = this.joinSession.bind(this);
@@ -39,47 +36,6 @@ class App extends Component {
     this.onbeforeunload = this.onbeforeunload.bind(this);
     this.playAudio = this.playAudio.bind(this); // 오디오 재생 함수 바인딩
     this.handleKeyDown = this.handleKeyDown.bind(this); // 키보드 이벤트 함수 바인딩
-
-    // const soundClips = sounds.keys().reduce((clips, fileName) => {
-    //   const sanitizedKey = fileName.replace('./', '').replace('.mp3', '');
-    //   clips[sanitizedKey] = sounds(fileName);
-    //   return clips;
-    // }, {});
-
-    // 사용 예: soundClips['snare'] 또는 soundClips['drum_1']
-  }
-
-  playAudio(keyValue) {
-    console.log("keyValue: " + keyValue);
-
-    switch (keyValue) {
-      case "a":
-      case "A":
-        const player1 = this.state.audioPlayer1;
-        player1.play();
-        break;
-      case "s":
-      case "S":
-        const player2 = this.state.audioPlayer2;
-        player2.play();
-        break;
-    }
-  }
-
-  handleKeyDown(event) {
-    // 키 입력을 신호로 전송
-    const key = event.key; // 키의 식별자를 가져옴
-    this.state.session
-      .signal({
-        data: key, // 실제 키의 식별자를 데이터로 사용
-        type: "key-signal", // 신호 유형 정의
-      })
-      .then(() => {
-        console.log(`Key '${key}' successfully sent as signal.`);
-      })
-      .catch((error) => {
-        console.error("Error sending signal:", error);
-      });
   }
 
   componentDidMount() {
@@ -117,23 +73,21 @@ class App extends Component {
 
   // soundFiles에서 Audio 객체를 생성하고 state에 저장
   loadAudioClips() {
-    const audioClips = soundFiles.keys().reduce((clips, fileName) => {
-      const clipKey = fileName.replace('./', '').replace('.mp3', '');
-      const audio = new Audio(soundFiles(fileName));
-      clips[clipKey] = audio;
-      return clips;
+    soundFiles.keys().reduce((clips, fileName) => {
+      const clipKey = fileName.replace("./", "").replace(".mp3", "");
+      const filePath = soundFiles(fileName);
+      this.addOrUpdateAudioClip(clipKey, filePath);
     }, {});
-
-    this.setState({ audioClips });
   }
 
-  // playAudio = (clipKey) => {
-  //   if (this.state.audioClips[clipKey]) {
-  //     this.state.audioClips[clipKey].play();
-  //   } else {
-  //     console.error('Audio clip not found:', clipKey);
-  //   }
-  // }
+  addOrUpdateAudioClip(clipKey, audioFile) {
+    this.setState((prevState) => ({
+      audioClips: {
+        ...prevState.audioClips, // 기존의 오디오 클립들을 복사
+        [clipKey]: new Audio(audioFile), // 새 오디오 클립 추가 또는 기존 클립 갱신
+      },
+    }));
+  }
 
   deleteSubscriber(streamManager) {
     let subscribers = this.state.subscribers;
@@ -144,6 +98,55 @@ class App extends Component {
         subscribers: subscribers,
       });
     }
+  }
+
+  playAudio(keyValue) {
+    switch (keyValue) {
+      case "q":
+      case "Q":
+        this.state.audioClips["drum_1"].play();
+        break;
+      case "w":
+      case "W":
+        this.state.audioClips["drum_2"].play();
+        break;
+      case "e":
+      case "E":
+        this.state.audioClips["drum_3"].play();
+        break;
+      case "a":
+      case "A":
+        this.state.audioClips["drum_4"].play();
+        break;
+      case "s":
+      case "S":
+        this.state.audioClips["drum_5"].play();
+        break;
+      case "d":
+      case "D":
+        this.state.audioClips["snare"].play();
+        break;
+    }
+  }
+
+  handleKeyDown(event) {
+    // 키 입력을 신호로 전송
+    const inputKey = event.key; // 키의 식별자를 가져옴
+    const mySession = this.state.session;
+
+    mySession
+      .signal({
+        data: JSON.stringify({userName: mySession.myUserName, keyCode: inputKey}), // 실제 키의 식별자를 데이터로 사용
+        to: this.state.subscribers, // 모든 구독자에게 신호를 보냄
+        type: "key-signal", // 신호 유형 정의
+      })
+      .then(() => {
+        console.log("[KHW] Send, key-signal successfully: " + inputKey);
+        this.playAudio(inputKey); // 오디오 재생
+      })
+      .catch((error) => {
+        console.error("[KHW] Error sending signal:", error);
+      });
   }
 
   joinSession() {
@@ -166,25 +169,37 @@ class App extends Component {
         mySession.on("streamCreated", (event) => {
           // Subscribe to the Stream to receive it. Second parameter is undefined
           // so OpenVidu doesn't create an HTML video by its own
-          var subscriber = mySession.subscribe(event.stream, undefined);
-          var subscribers = this.state.subscribers;
-          subscribers.push(subscriber);
+          console.log("[KHW] Receive, streamCreated: " + event.stream.connection.connectionId);
 
-          // Update the state with the new subscribers
-          this.setState({
-            subscribers: subscribers,
-          });
+          if (event.stream.connection.connectionId !== mySession.connection.connectionId) {
+            console.log("[KHW] Receive, different user");
+            var subscriber = mySession.subscribe(event.stream, undefined);
+            var subscribers = this.state.subscribers;
+            subscribers.push(subscriber);
+
+            // Update the state with the new subscribers
+            this.setState({
+              subscribers: subscribers,
+            });
+          }
         });
 
         // On every Stream destroyed...
         mySession.on("streamDestroyed", (event) => {
           // Remove the stream from 'subscribers' array
+          console.log("[KHW] Receive, streamDestroyed: " + event.stream.streamManager.stream.connection.data);
           this.deleteSubscriber(event.stream.streamManager);
         });
 
         // On every asynchronous exception...
         mySession.on("exception", (exception) => {
+          console.log("[KHW] Receive, Exception: " + exception.code + " - " + exception.message);
           console.warn(exception);
+        });
+
+        mySession.on("signal:key-signal", (event) => {
+          console.log("[KHW] Receive, Key signal received: " + event.data); // Message
+          this.playAudio(event.data);
         });
 
         // Receiver of the message (usually before calling 'session.connect')
@@ -195,30 +210,15 @@ class App extends Component {
         // });
 
         // Receiver of all messages (usually before calling 'session.connect')
-        mySession.on("signal", (event) => {
-          console.log(event.data); // Message
-          console.log(event.from); // Connection object of the sender
-          console.log(event.type); // The type of message
+        // mySession.on("signal", (event) => {
+        //   console.log(event.data); // Message
+        //   console.log(event.from); // Connection object of the sender
+        //   console.log(event.type); // The type of message
+        // });
 
-          this.playAudio(event.data);
-
-          // switch (event.data) {
-          //   case "a":
-          //     this.playAudio(snare);
-          //     break;
-          //   case "s":
-          //     this.playAudio(drum_1);
-          //     break;
-          // }
-
-          // if (event.data === "a" || event.data === "S") {
-          //   this.playAudio(drum_1);
-          // }
-        });
-
-        mySession.on("connectionCreated", (event) => {
-          console.log(event.connection);
-        });
+        // mySession.on("connectionCreated", (event) => {
+        //   console.log(event.connection);
+        // });
 
         // --- 4) Connect to the session with a valid user token ---
 
@@ -229,8 +229,6 @@ class App extends Component {
           mySession
             .connect(token, { clientData: this.state.myUserName })
             .then(async () => {
-              window.addEventListener("keydown", this.handleKeyDown);  // 키 입력 리스너 추가
-
               // --- 5) Get your own camera stream ---
 
               // Init a publisher passing undefined as targetElement (we don't want OpenVidu to insert a video
@@ -269,6 +267,28 @@ class App extends Component {
                 mainStreamManager: publisher,
                 publisher: publisher,
               });
+
+              // Sender of the message (after 'session.connect')
+              // mySession
+              //   .signal({
+              //     data: "My custom message", // Any string (optional)
+              //     to: [], // Array of Connection objects (optional. Broadcast to everyone if empty)
+              //     type: "my-chat", // The type of message (optional)
+              //   })
+              //   .then(() => {
+              //     console.log("Message successfully sent");
+              //   })
+              //   .catch((error) => {
+              //     console.error(error);
+              //   });
+
+              // mySession.signal({
+              //   data: "My private custom message",
+              //   to: [connection1, connection2],
+              //   type: "my-private-chat",
+              // });
+
+              window.addEventListener("keydown", this.handleKeyDown); // 키 입력 리스너 추가
             })
             .catch((error) => {
               console.log(
@@ -277,26 +297,6 @@ class App extends Component {
                 error.message
               );
             });
-
-          // Sender of the message (after 'session.connect')
-          mySession
-            .signal({
-              data: "My custom message", // Any string (optional)
-              to: [], // Array of Connection objects (optional. Broadcast to everyone if empty)
-              type: "my-chat", // The type of message (optional)
-            })
-            .then(() => {
-              console.log("Message successfully sent");
-            })
-            .catch((error) => {
-              console.error(error);
-            });
-
-          // mySession.signal({
-          //   data: "My private custom message",
-          //   to: [connection1, connection2],
-          //   type: "my-private-chat",
-          // });
         });
       }
     );
