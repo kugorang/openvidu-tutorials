@@ -238,7 +238,7 @@ class App extends Component {
               let publisher = await this.OV.initPublisherAsync(undefined, {
                 audioSource: undefined, // The source of audio. If undefined default microphone
                 videoSource: undefined, // The source of video. If undefined default webcam
-                publishAudio: true, // Whether you want to start publishing with your audio unmuted or not
+                publishAudio: false, // Whether you want to start publishing with your audio unmuted or not
                 publishVideo: true, // Whether you want to start publishing with your video enabled or not
                 resolution: "640x480", // The resolution of your video
                 frameRate: 30, // The frame rate of your video
@@ -341,7 +341,7 @@ class App extends Component {
           // In mobile devices the default and first camera is the front one
           var newPublisher = this.OV.initPublisher(undefined, {
             videoSource: newVideoDevice[0].deviceId,
-            publishAudio: true,
+            publishAudio: false,
             publishVideo: true,
             mirror: true,
           });
