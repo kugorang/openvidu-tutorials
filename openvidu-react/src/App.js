@@ -4,9 +4,14 @@ import axios from "axios";
 import React, { Component } from "react";
 import "./App.css";
 import UserVideoComponent from "./UserVideoComponent";
+import drum_snare_sound from "./drum/snare.mp3"; // 음악 파일 임포트
+import drum_1 from "./drum/drum_1.mp3"; // 음악 파일 임포트
 
 const APPLICATION_SERVER_URL =
   process.env.NODE_ENV === "production" ? "" : "https://motionbe.at:5000/";
+
+  // Webpack require.context를 사용하여 모든 mp3 파일 로드
+const soundFiles = require.context('./drum', false, /\.mp3$/);
 
 class App extends Component {
   constructor(props) {
@@ -20,8 +25,9 @@ class App extends Component {
       mainStreamManager: undefined, // Main video of the page. Will be the 'publisher' or one of the 'subscribers'
       publisher: undefined,
       subscribers: [],
-      audioUrl: "./drum/snare.mp3", // 음악 파일 경로
-      audioPlayer: new Audio("./drum/snare.mp3"), // Audio 객체 생성
+      // audioClips: {}
+      audioPlayer1: new Audio(drum_snare_sound), // 오디오 플레이어 객체 생성
+      audioPlayer2: new Audio(drum_1), // 오디오 플레이어 객체 생성
     };
 
     this.joinSession = this.joinSession.bind(this);
@@ -33,11 +39,31 @@ class App extends Component {
     this.onbeforeunload = this.onbeforeunload.bind(this);
     this.playAudio = this.playAudio.bind(this); // 오디오 재생 함수 바인딩
     this.handleKeyDown = this.handleKeyDown.bind(this); // 키보드 이벤트 함수 바인딩
+
+    // const soundClips = sounds.keys().reduce((clips, fileName) => {
+    //   const sanitizedKey = fileName.replace('./', '').replace('.mp3', '');
+    //   clips[sanitizedKey] = sounds(fileName);
+    //   return clips;
+    // }, {});
+
+    // 사용 예: soundClips['snare'] 또는 soundClips['drum_1']
   }
 
-  playAudio() {
-    const player = this.state.audioPlayer;
-    player.play();
+  playAudio(keyValue) {
+    console.log("keyValue: " + keyValue);
+
+    switch (keyValue) {
+      case "a":
+      case "A":
+        const player1 = this.state.audioPlayer1;
+        player1.play();
+        break;
+      case "s":
+      case "S":
+        const player2 = this.state.audioPlayer2;
+        player2.play();
+        break;
+    }
   }
 
   handleKeyDown(event) {
@@ -58,6 +84,7 @@ class App extends Component {
 
   componentDidMount() {
     window.addEventListener("beforeunload", this.onbeforeunload);
+    this.loadAudioClips();
   }
 
   componentWillUnmount() {
@@ -87,6 +114,26 @@ class App extends Component {
       });
     }
   }
+
+  // soundFiles에서 Audio 객체를 생성하고 state에 저장
+  loadAudioClips() {
+    const audioClips = soundFiles.keys().reduce((clips, fileName) => {
+      const clipKey = fileName.replace('./', '').replace('.mp3', '');
+      const audio = new Audio(soundFiles(fileName));
+      clips[clipKey] = audio;
+      return clips;
+    }, {});
+
+    this.setState({ audioClips });
+  }
+
+  // playAudio = (clipKey) => {
+  //   if (this.state.audioClips[clipKey]) {
+  //     this.state.audioClips[clipKey].play();
+  //   } else {
+  //     console.error('Audio clip not found:', clipKey);
+  //   }
+  // }
 
   deleteSubscriber(streamManager) {
     let subscribers = this.state.subscribers;
@@ -153,9 +200,20 @@ class App extends Component {
           console.log(event.from); // Connection object of the sender
           console.log(event.type); // The type of message
 
-          if (event.data === "A" || event.data === "S") {
-            this.playAudio();
-          }
+          this.playAudio(event.data);
+
+          // switch (event.data) {
+          //   case "a":
+          //     this.playAudio(snare);
+          //     break;
+          //   case "s":
+          //     this.playAudio(drum_1);
+          //     break;
+          // }
+
+          // if (event.data === "a" || event.data === "S") {
+          //   this.playAudio(drum_1);
+          // }
         });
 
         mySession.on("connectionCreated", (event) => {
@@ -180,7 +238,7 @@ class App extends Component {
               let publisher = await this.OV.initPublisherAsync(undefined, {
                 audioSource: undefined, // The source of audio. If undefined default microphone
                 videoSource: undefined, // The source of video. If undefined default webcam
-                publishAudio: false, // Whether you want to start publishing with your audio unmuted or not
+                publishAudio: true, // Whether you want to start publishing with your audio unmuted or not
                 publishVideo: true, // Whether you want to start publishing with your video enabled or not
                 resolution: "640x480", // The resolution of your video
                 frameRate: 30, // The frame rate of your video
@@ -283,7 +341,7 @@ class App extends Component {
           // In mobile devices the default and first camera is the front one
           var newPublisher = this.OV.initPublisher(undefined, {
             videoSource: newVideoDevice[0].deviceId,
-            publishAudio: false,
+            publishAudio: true,
             publishVideo: true,
             mirror: true,
           });
