@@ -160,7 +160,7 @@ class App extends Component {
               }
         });
 
-        this.session.on("connectionCreated", (event) => {
+        mySession.on("connectionCreated", (event) => {
           console.log(event.connection);
         });
 
@@ -234,11 +234,11 @@ class App extends Component {
               console.error(error);
             });
 
-          mySession.signal({
-            data: "My private custom message",
-            to: [connection1, connection2],
-            type: "my-private-chat",
-          });
+          // mySession.signal({
+          //   data: "My private custom message",
+          //   to: [connection1, connection2],
+          //   type: "my-private-chat",
+          // });
         });
       }
     );
